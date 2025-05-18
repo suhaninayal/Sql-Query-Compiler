@@ -59,6 +59,51 @@ class SQLQueryOptimizer:
                 pass  # Fail silently if column lookup fails
         return self
 
+    def prune_unused_columns(self):
+        select_match = re.search(r'SELECT\s+(.+?)\s+FROM\s+(\w+)', self.query, flags=re.IGNORECASE)
+        if not select_match:
+            return self
+
+        select_cols = select_match.group(1).split(',')
+        table = select_match.group(2).strip()
+        try:
+            all_columns = set(get_table_columns(table))
+            if not all_columns:
+                return self
+
+            used_columns = set()
+
+            # Check WHERE clause
+            where_match = re.search(r'\bWHERE\s+(.+?)(?:GROUP BY|ORDER BY|$)', self.query, re.IGNORECASE)
+            if where_match:
+                where_clause = where_match.group(1)
+                tokens = re.findall(r'\b\w+\b', where_clause)
+                used_columns |= set(tokens) & all_columns
+
+            # Check JOIN clauses
+            join_matches = re.findall(r'ON\s+([^\s=]+)\s*=\s*([^\s]+)', self.query, flags=re.IGNORECASE)
+            for left, right in join_matches:
+                used_columns |= {left.split('.')[-1], right.split('.')[-1]} & all_columns
+
+            # Fall back to all columns if none found
+            if not used_columns:
+                used_columns = all_columns
+
+            final_columns = ', '.join(sorted(used_columns))
+            self.query = re.sub(
+                r'SELECT\s+.+?\s+FROM',
+                f'SELECT {final_columns} FROM',
+                self.query,
+                flags=re.IGNORECASE
+            )
+
+        except Exception:
+            pass
+
+        return self
+
+
+
     def flatten_subqueries(self):
         # Flatten subqueries in FROM clause: (SELECT * FROM table WHERE condition) alias
         pattern = re.compile(
