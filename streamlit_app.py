@@ -120,7 +120,7 @@ def main():
     except Exception as e:
         st.error(f"❗ Error during processing: {e}")
     st.markdown("---")
-    st.caption("Developed by Unnati Adhikari & Team – File System Simulator")
+    st.caption("Developed by Suhani,Deepanshu,Unnati,Ankit – SQL Query Compiler")
 
 if __name__ == "__main__":
     main()
