@@ -4,7 +4,7 @@ import re
 from semantic import check_table_exists, validate_semantics
 from lexer import lexer
 from optimiser import SQLQueryOptimizer
-from executor import execute_query_with_error_handling
+from executor import execute_query  # Updated import here
 from parser import SQLSyntaxParser
 
 def extract_table_name(query):
@@ -36,7 +36,6 @@ def main():
         return
 
     try:
-        # Precompute all results once to avoid repeating work when switching phases
         tokens = list(lexer(query))
         parser = SQLSyntaxParser(tokens)
         syntax_result = parser.parse()
@@ -46,9 +45,8 @@ def main():
         table_name = extract_table_name(optimized_query)
         execution_result = None
         if optimized_query.strip().lower().startswith("select") and table_name and check_table_exists(table_name):
-            execution_result = execute_query_with_error_handling(optimized_query)
+            execution_result = execute_query(optimized_query)  # Updated call here
 
-        # Show selected phase
         if selected_phase == "Original Query":
             st.subheader("🔹 Original Query")
             st.code(query, language='sql')
@@ -65,11 +63,8 @@ def main():
             st.subheader("🚀 Optimized Query")
             if optimized_query.strip() != query.strip():
                 st.success("Query successfully optimized.")
-
-                # Heuristic: check if SELECT * was replaced and pruning was applied
                 if re.search(r"select\s+\*", query, re.IGNORECASE) and not re.search(r"select\s+\*", optimized_query, re.IGNORECASE):
                     st.info("🔧 Column pruning applied: Replaced `SELECT *` with only required columns.")
-
                 col1, col2 = st.columns(2)
                 with col1:
                     st.caption("Original")
@@ -101,7 +96,6 @@ def main():
                     else:
                         st.dataframe(execution_result)
 
-        # Optional: show summary at bottom regardless of phase
         st.markdown("---")
         st.subheader("📄 Summary")
         st.code("Original Query:\n" + query, language='sql')

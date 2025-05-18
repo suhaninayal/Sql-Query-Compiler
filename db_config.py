@@ -4,7 +4,7 @@ import mysql.connector
 host = 'localhost'  # Your host, e.g., 'localhost' or an IP address
 user = 'root'  # Your MySQL username
 password = '2004'  # Your MySQL password
-database = 'sql_compiler'  # The database to connect to
+database = 'sql_query_compiler'  # The database to connect to
 
 def get_connection():
     """Establish a connection to the database."""
