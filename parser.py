@@ -8,25 +8,61 @@ class SQLSyntaxParser:
         self.position = 0
         self.root = Node("SQL Query")
 
+    def parse_qualified_name(self):
+        """
+        Parses tokens like identifier(.identifier)+ into a single qualified name string.
+        e.g. ['e', '.', 'dept_id'] -> 'e.dept_id'
+        """
+        if self.position >= len(self.tokens):
+            return None
+
+        # First token must be an identifier (word)
+        if not re.match(r'^\w+$', self.tokens[self.position][1]):
+            return None
+
+        parts = [self.tokens[self.position][1]]
+        self.position += 1
+
+        # Loop while next tokens are '.' and identifier pairs
+        while (self.position + 1 < len(self.tokens) and
+               self.tokens[self.position][1] == '.' and
+               re.match(r'^\w+$', self.tokens[self.position + 1][1])):
+            # consume '.' and identifier
+            parts.append(self.tokens[self.position + 1][1])
+            self.position += 2
+
+        return ".".join(parts)
+
     def build_parse_tree(self):
         if not self.tokens:
             return Node("Empty Query")
 
         root = Node("SQL Query")
-
-        keyword_nodes = {}
+        self.position = 0
         current_keyword = None
 
-        for token_type, token_value in self.tokens:
+        while self.position < len(self.tokens):
+            token_type, token_value = self.tokens[self.position]
             upper_value = token_value.upper()
+
             if upper_value in ["SELECT", "FROM", "WHERE", "INSERT", "INTO", "VALUES", "UPDATE", "SET", "DELETE", "JOIN", "ON"]:
                 current_keyword = Node(upper_value, parent=root)
-                keyword_nodes[upper_value] = current_keyword
+                self.position += 1
             else:
-                if current_keyword:
-                    Node(token_value, parent=current_keyword)
+                # Try to parse qualified name (identifiers separated by dots)
+                qualified_name = self.parse_qualified_name()
+                if qualified_name:
+                    if current_keyword:
+                        Node(qualified_name, parent=current_keyword)
+                    else:
+                        Node(qualified_name, parent=root)
                 else:
-                    Node(token_value, parent=root)  # fallback
+                    # If not qualified name, add single token and advance
+                    if current_keyword:
+                        Node(token_value, parent=current_keyword)
+                    else:
+                        Node(token_value, parent=root)
+                    self.position += 1
 
         self.root = root
         return root
@@ -90,18 +126,47 @@ class SQLSyntaxParser:
         return None
 
     def check_for_missing_commas(self):
-        for i in range(1, len(self.tokens) - 1):
-            prev_token = self.tokens[i - 1][1]
-            current_token = self.tokens[i][1]
-            next_token = self.tokens[i + 1][1]
-
-            skip_tokens = {'*', ',', 'FROM', 'WHERE', 'AND', 'OR', 'ON', 'INTO', 'SET', 'VALUES'}
-            if current_token.upper() in skip_tokens or prev_token.upper() in skip_tokens or next_token.upper() in skip_tokens:
+        # We need to treat qualified names as one token here
+        i = 0
+        while i < len(self.tokens):
+            # Try to parse qualified name from current position
+            pos = i
+            if not re.match(r'^\w+$', self.tokens[pos][1]):
+                i += 1
                 continue
+            parts = [self.tokens[pos][1]]
+            pos += 1
+            while (pos + 1 < len(self.tokens) and
+                   self.tokens[pos][1] == '.' and
+                   re.match(r'^\w+$', self.tokens[pos + 1][1])):
+                parts.append(self.tokens[pos + 1][1])
+                pos += 2
 
-            if re.match(r'^\w+$', prev_token) and re.match(r'^\w+$', current_token) and re.match(r'^\w+$', next_token):
-                return f"Syntax Error: Missing comma before '{current_token}' at position {i}."
+            # parts now hold the qualified name tokens
+            # Check if there's missing commas between consecutive qualified names
+            next_start = pos
+            if next_start < len(self.tokens):
+                # Look ahead to next qualified name
+                # Find next qualified name start
+                if next_start < len(self.tokens) and re.match(r'^\w+$', self.tokens[next_start][1]):
+                    # Next qualified name exists; check if comma is missing between them
+                    # If there's no comma between end of first qualified name and start of next, error
+                    # Find the token just after first qualified name
+                    after_first_end = pos
+                    # If tokens between first qualified name and next are not comma, raise error
+                    # Actually since qualified names are parsed fully, if no comma at pos, error
+                    if after_first_end < len(self.tokens):
+                        if self.tokens[after_first_end][1] != ',':
+                            # Exception for special tokens that can come after qualified names
+                            skip_tokens = {'*', ',', 'FROM', 'WHERE', 'AND', 'OR', 'ON', 'INTO', 'SET', 'VALUES'}
+                            prev_token = self.tokens[after_first_end - 1][1].upper() if after_first_end - 1 >= 0 else None
+                            curr_token = self.tokens[after_first_end][1].upper()
+                            if curr_token not in skip_tokens and prev_token not in skip_tokens:
+                                return f"Syntax Error: Missing comma before '{self.tokens[after_first_end][1]}' at position {after_first_end}."
+            i = pos
         return None
+
+    # The rest of your parsing methods remain unchanged...
 
     def parse_select(self):
         tokens_upper = [t[1].upper() for t in self.tokens]
@@ -233,8 +298,12 @@ tokens = [
     ("SELECT", "SELECT"),
     ("*", "*"),
     ("FROM", "FROM"),
+    ("e", "e"),
+    (".", "."),
     ("employees", "employees"),
     ("WHERE", "WHERE"),
+    ("e", "e"),
+    (".", "."),
     ("age", "age"),
     ("=", "="),
     ("30", "30")
@@ -242,3 +311,8 @@ tokens = [
 
 parser = SQLSyntaxParser(tokens)
 print(parser.parse())
+
+# To build and print parse tree
+root = parser.build_parse_tree()
+for pre, _, node in RenderTree(root):
+    print(f"{pre}{node.name}")
