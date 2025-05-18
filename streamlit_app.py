@@ -75,6 +75,11 @@ def main():
             st.subheader("🚀 Optimized Query")
             if optimized_query.strip() != query.strip():
                 st.success("Query successfully optimized.")
+
+                # Heuristic: check if SELECT * was replaced and pruning was applied
+                if re.search(r"select\s+\*", query, re.IGNORECASE) and not re.search(r"select\s+\*", optimized_query, re.IGNORECASE):
+                    st.info("🔧 Column pruning applied: Replaced `SELECT *` with only required columns.")
+
                 col1, col2 = st.columns(2)
                 with col1:
                     st.caption("Original")
@@ -119,4 +124,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+ 
+
  
