@@ -21,7 +21,7 @@ class SQLSyntaxParser:
         parts = [self.tokens[self.position][1]]
         self.position += 1
 
-        # Loop while next tokens are '.' and identifier pairs
+        # Loop while next tokens are '.' and identifier pair
         while (self.position + 1 < len(self.tokens) and
                self.tokens[self.position][1] == '.' and
                re.match(r'^\w+$', self.tokens[self.position + 1][1])):
