@@ -16,8 +16,8 @@ token_specification = [
     ('IDENTIFIER',  r'[A-Za-z_][A-Za-z0-9_]*'),
     ('NUMBER',      r'\b\d+\b'),
     ('STRING',      r"'[^']*'"),
-    ('WHITESPACE',  r'[ \t\r\n]+'),  # Skip whitespace
-    ('MISMATCH',    r'.')            # Invalid token
+    ('WHITESPACE',  r'[ \t\r\n]+'),  
+    ('MISMATCH',    r'.')            
 ]
 
 # Combine all token patterns into one regex
