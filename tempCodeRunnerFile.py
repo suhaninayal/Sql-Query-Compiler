@@ -1,5 +1,7 @@
 import streamlit as st
 import re
+from anytree import RenderTree
+from anytree.exporter import DotExporter
 
 from semantic import check_table_exists, validate_semantics
 from lexer import lexer
@@ -60,6 +62,14 @@ def main():
         elif selected_phase == "Syntax Analysis":
             st.subheader("📐 Syntax Analysis")
             st.write(syntax_result)
+        elif selected_phase == "Visual Parse Tree":
+
+            st.subheader("🌳 Visual Parse Tree")
+
+            tree = parser.build_parse_tree()
+            tree_str = "\n".join([f"{pre}{node.name}" for pre, _, node in RenderTree(tree)])
+            st.text(tree_str)
+        
 
         elif selected_phase == "Optimization":
             st.subheader("🚀 Optimized Query")
@@ -114,3 +124,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+ 
+
+ 

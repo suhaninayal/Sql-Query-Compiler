@@ -6,7 +6,7 @@ import re
 # Define token types
 KEYWORDS = ["SELECT", "FROM", "WHERE", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP", "JOIN", "INNER", "LEFT", "RIGHT", "ON", "VALUES", "SET"]
 OPERATORS = ["=", "<", ">", "<=", ">=", "<>", "LIKE", "AND", "OR", "NOT"]
-PUNCTUATION = [",", "(", ")", "*", ";"]
+PUNCTUATION = [",", "(", ")", "*", ";","."]
 
 # Regular expressions for matching tokens
 token_specification = [

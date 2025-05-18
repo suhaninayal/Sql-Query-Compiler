@@ -1,12 +1,10 @@
 import re
-from anytree import Node, RenderTree
-
 
 class SQLSyntaxParser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.position = 0
-        self.root = Node("SQL Query")
+        self.root = None  # No anytree Node now
 
     def parse_qualified_name(self):
         """
@@ -35,9 +33,9 @@ class SQLSyntaxParser:
 
     def build_parse_tree(self):
         if not self.tokens:
-            return Node("Empty Query")
+            return {"type": "Empty Query"}
 
-        root = Node("SQL Query")
+        root = {"type": "SQL Query", "children": []}
         self.position = 0
         current_keyword = None
 
@@ -46,22 +44,25 @@ class SQLSyntaxParser:
             upper_value = token_value.upper()
 
             if upper_value in ["SELECT", "FROM", "WHERE", "INSERT", "INTO", "VALUES", "UPDATE", "SET", "DELETE", "JOIN", "ON"]:
-                current_keyword = Node(upper_value, parent=root)
+                current_keyword = {"type": upper_value, "children": []}
+                root["children"].append(current_keyword)
                 self.position += 1
             else:
                 # Try to parse qualified name (identifiers separated by dots)
                 qualified_name = self.parse_qualified_name()
                 if qualified_name:
+                    node = {"type": "qualified_name", "value": qualified_name}
                     if current_keyword:
-                        Node(qualified_name, parent=current_keyword)
+                        current_keyword["children"].append(node)
                     else:
-                        Node(qualified_name, parent=root)
+                        root["children"].append(node)
                 else:
                     # If not qualified name, add single token and advance
+                    node = {"type": "token", "value": token_value}
                     if current_keyword:
-                        Node(token_value, parent=current_keyword)
+                        current_keyword["children"].append(node)
                     else:
-                        Node(token_value, parent=root)
+                        root["children"].append(node)
                     self.position += 1
 
         self.root = root
@@ -298,21 +299,70 @@ tokens = [
     ("SELECT", "SELECT"),
     ("*", "*"),
     ("FROM", "FROM"),
-    ("e", "e"),
-    (".", "."),
+    ("(", "("),
+    ("SELECT", "SELECT"),
+    ("*", "*"),
+    ("FROM", "FROM"),
     ("employees", "employees"),
     ("WHERE", "WHERE"),
+    ("age", "age"),
+    (">", ">"),
+    ("30", "30"),
+    (")", ")"),
+    ("e", "e"),
+    ("JOIN", "JOIN"),
+    ("departments", "departments"),
+    ("d", "d"),
+    ("ON", "ON"),
     ("e", "e"),
     (".", "."),
-    ("age", "age"),
+    ("dept_id", "dept_id"),
     ("=", "="),
-    ("30", "30")
+    ("d", "d"),
+    (".", "."),
+    ("dept_id", "dept_id"),
+    ("JOIN", "JOIN"),
+    ("salaries", "salaries"),
+    ("s", "s"),
+    ("ON", "ON"),
+    ("e", "e"),
+    (".", "."),
+    ("emp_id", "emp_id"),
+    ("=", "="),
+    ("s", "s"),
+    (".", "."),
+    ("emp_id", "emp_id"),
+    ("WHERE", "WHERE"),
+    ("1", "1"),
+    ("=", "="),
+    ("1", "1"),
+    ("AND", "AND"),
+    ("age", "age"),
+    (">", ">"),
+    ("25", "25"),
+    ("AND", "AND"),
+    ("age", "age"),
+    (">", ">"),
+    ("30", "30"),
+    ("AND", "AND"),
+    ("e", "e"),
+    (".", "."),
+    ("emp_id", "emp_id"),
+    ("=", "="),
+    ("5", "5"),
+    ("AND", "AND"),
+    ("e", "e"),
+    (".", "."),
+    ("emp_id", "emp_id"),
+    ("=", "="),
+    ("5", "5"),
+    (";", ";")
 ]
 
 parser = SQLSyntaxParser(tokens)
 print(parser.parse())
 
-# To build and print parse tree
-root = parser.build_parse_tree()
-for pre, _, node in RenderTree(root):
-    print(f"{pre}{node.name}")
+# To build and print parse tree as dict
+parse_tree = parser.build_parse_tree()
+import json
+print(json.dumps(parse_tree, indent=2))
