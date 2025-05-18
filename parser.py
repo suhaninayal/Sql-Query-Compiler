@@ -5,7 +5,7 @@ class SQLSyntaxParser:
         self.tokens = tokens
         self.position = 0
         self.root = None  # No anytree Node now
-
+        
     def parse_qualified_name(self):
         """
         Parses tokens like identifier(.identifier)+ into a single qualified name string.
