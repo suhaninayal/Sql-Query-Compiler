@@ -4,7 +4,7 @@ import re
 from semantic import check_table_exists, validate_semantics
 from lexer import lexer
 from optimiser import SQLQueryOptimizer
-from executor import execute_query  # Updated import here
+from executor import execute_query
 from parser import SQLSyntaxParser
 
 def extract_table_name(query):
@@ -40,12 +40,14 @@ def main():
         parser = SQLSyntaxParser(tokens)
         syntax_result = parser.parse()
         optimizer = SQLQueryOptimizer(query)
-        optimized_query = optimizer.optimize()
+        optimizer.optimize()
+        optimization_steps = optimizer.get_steps()
+        optimized_query = optimization_steps[-1][1]
         semantic_result = validate_semantics(optimized_query)
         table_name = extract_table_name(optimized_query)
         execution_result = None
         if optimized_query.strip().lower().startswith("select") and table_name and check_table_exists(table_name):
-            execution_result = execute_query(optimized_query)  # Updated call here
+            execution_result = execute_query(optimized_query)
 
         if selected_phase == "Original Query":
             st.subheader("🔹 Original Query")
@@ -60,21 +62,10 @@ def main():
             st.write(syntax_result)
 
         elif selected_phase == "Optimization":
-            st.subheader("🚀 Optimized Query")
-            if optimized_query.strip() != query.strip():
-                st.success("Query successfully optimized.")
-                if re.search(r"select\s+\*", query, re.IGNORECASE) and not re.search(r"select\s+\*", optimized_query, re.IGNORECASE):
-                    st.info("🔧 Column pruning applied: Replaced `SELECT *` with only required columns.")
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.caption("Original")
-                    st.code(query, language='sql')
-                with col2:
-                    st.caption("Optimized")
-                    st.code(optimized_query, language='sql')
-            else:
-                st.info("No optimizations were applied.")
-                st.code(optimized_query, language='sql')
+            st.subheader("🚀 Optimized Query: Step-by-Step")
+            for i, (desc, step_query) in enumerate(optimization_steps):
+                with st.expander(f"Step {i + 1}: {desc}", expanded=(i == 0)):
+                    st.code(step_query, language='sql')
 
         elif selected_phase == "Semantic Analysis":
             st.subheader("🧠 Semantic Analysis")
@@ -99,12 +90,13 @@ def main():
         st.markdown("---")
         st.subheader("📄 Summary")
         st.code("Original Query:\n" + query, language='sql')
-        st.code("Optimized Query:\n" + optimized_query, language='sql')
+        st.code("Final Optimized Query:\n" + optimized_query, language='sql')
 
     except Exception as e:
         st.error(f"❗ Error during processing: {e}")
+
     st.markdown("---")
-    st.caption("Developed by Suhani,Deepanshu,Unnati,Ankit – SQL Query Compiler")
+    st.caption("Developed by Suhani, Deepanshu, Unnati, Ankit – SQL Query Compiler")
 
 if __name__ == "__main__":
     main()
