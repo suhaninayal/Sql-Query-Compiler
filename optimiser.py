@@ -55,6 +55,30 @@ class SQLQueryOptimizer:
             self.log_step("Removed redundant joins")
         return self
 
+    def join_elimination(self):
+        join_pattern = re.compile(r'JOIN\s+(\w+)(?:\s+(\w+))?', flags=re.IGNORECASE)
+        joins = join_pattern.findall(self.query)
+
+        table_alias_refs = set()
+        for match in re.finditer(r'(\w+)\.\w+', self.query):
+            table_alias_refs.add(match.group(1).lower())
+
+        from_tables = re.findall(r'FROM\s+(\w+)(?:\s+(\w+))?', self.query, flags=re.IGNORECASE)
+        for tbl, alias in from_tables:
+            table_alias_refs.add((alias or tbl).lower())
+
+        original = self.query
+        for table, alias in joins:
+            tbl_alias = alias.lower() if alias else table.lower()
+            if tbl_alias not in table_alias_refs:
+                join_clause_pattern = re.compile(
+                    rf'JOIN\s+{table}(?:\s+{alias})?\s+ON\s+[^J]+', flags=re.IGNORECASE)
+                self.query = join_clause_pattern.sub('', self.query)
+
+        if self.query != original:
+            self.log_step("Eliminated unused joins")
+        return self
+
     def optimize_where_conditions(self):
         where_match = re.search(r'WHERE\s+(.+)', self.query, flags=re.IGNORECASE | re.DOTALL)
         if not where_match:
@@ -140,41 +164,59 @@ class SQLQueryOptimizer:
                 self.log_step("Reordered joins alphabetically by table name")
         return self
 
+    def convert_or_to_in(self):
+        where_match = re.search(r'WHERE\s+(.+)', self.query, flags=re.IGNORECASE | re.DOTALL)
+        if not where_match:
+            return self
+
+        original = self.query
+        where_clause = where_match.group(1).strip()
+        conditions = re.split(r'\s+AND\s+', where_clause, flags=re.IGNORECASE)
+        new_conditions = []
+        for cond in conditions:
+            if ' OR ' in cond.upper():
+                or_parts = re.split(r'\s+OR\s+', cond, flags=re.IGNORECASE)
+                col_name = None
+                values = []
+                valid = True
+                for part in or_parts:
+                    m = re.match(r'(\w+)\s*=\s*(.+)', part.strip(), flags=re.IGNORECASE)
+                    if m:
+                        this_col = m.group(1)
+                        val = m.group(2).strip()
+                        if col_name is None:
+                            col_name = this_col
+                        elif col_name.lower() != this_col.lower():
+                            valid = False
+                            break
+                        values.append(val)
+                    else:
+                        valid = False
+                        break
+                if valid and col_name and len(values) > 1:
+                    new_conditions.append(f"{col_name} IN ({', '.join(values)})")
+                else:
+                    new_conditions.append(cond)
+            else:
+                new_conditions.append(cond)
+        new_where = " AND ".join(new_conditions)
+        self.query = re.sub(r'WHERE\s+(.+)', f'WHERE {new_where}', self.query, flags=re.IGNORECASE | re.DOTALL)
+        if self.query != original:
+            self.log_step("Converted OR chains to IN clauses")
+        return self
+
     def optimize(self):
         return (
             self.remove_where_1_equals_1()
                 .flatten_subqueries()
                 .remove_redundant_predicates()
                 .remove_redundant_joins()
+                .join_elimination()
                 .optimize_where_conditions()
                 .simplify_select_star()
+                .convert_or_to_in()
                 .reorder_joins()
         )
 
     def get_steps(self):
         return self.steps
-
-# Example usage
-if __name__ == "__main__":
-    
-    import sys
-
-    print("Enter your SQL query (end input with an empty line):")
-    lines = []
-    while True:
-        line = input()
-        if line.strip() == "":
-            break
-        lines.append(line)
-
-    query = "\n".join(lines)
-
-    if not query.strip():
-        print("❗ No query entered.")
-        sys.exit(1)
-
-    optimizer = SQLQueryOptimizer(query)
-    optimizer.optimize()
-
-    for step, q in optimizer.get_steps():
-        print(f"\nStep: {step}\n{q}\n{'-'*60}")
