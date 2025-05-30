@@ -142,7 +142,6 @@ class SQLSyntaxParser:
                     after_first_end = pos
                     if after_first_end < len(self.tokens):
                         if self.tokens[after_first_end][1] != ',':
-                            # Exception for special tokens that can come after qualified names
                             skip_tokens = {'*', ',', 'FROM', 'WHERE', 'AND', 'OR', 'ON', 'INTO', 'SET', 'VALUES'}
                             prev_token = self.tokens[after_first_end - 1][1].upper() if after_first_end - 1 >= 0 else None
                             curr_token = self.tokens[after_first_end][1].upper()
@@ -150,8 +149,6 @@ class SQLSyntaxParser:
                                 return f"Syntax Error: Missing comma before '{self.tokens[after_first_end][1]}' at position {after_first_end}."
             i = pos
         return None
-
-    # The rest of your parsing methods remain unchanged...
 
     def parse_select(self):
         tokens_upper = [t[1].upper() for t in self.tokens]
@@ -278,7 +275,6 @@ class SQLSyntaxParser:
         return "HAVING clause parsed successfully."
 
 
-# Example usage:
 tokens = [
     ("SELECT", "SELECT"),
     ("*", "*"),
@@ -346,7 +342,6 @@ tokens = [
 parser = SQLSyntaxParser(tokens)
 print(parser.parse())
 
-# To build and print parse tree as dict
 parse_tree = parser.build_parse_tree()
 import json
 print(json.dumps(parse_tree, indent=2))
