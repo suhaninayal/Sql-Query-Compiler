@@ -4,7 +4,7 @@ class SQLSyntaxParser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.position = 0
-        self.root = None  # No anytree Node now
+        self.root = None  
         
     def parse_qualified_name(self):
         """
@@ -14,18 +14,15 @@ class SQLSyntaxParser:
         if self.position >= len(self.tokens):
             return None
 
-        # First token must be an identifier (word)
         if not re.match(r'^\w+$', self.tokens[self.position][1]):
             return None
 
         parts = [self.tokens[self.position][1]]
         self.position += 1
 
-        # Loop while next tokens are '.' and identifier pair
         while (self.position + 1 < len(self.tokens) and
                self.tokens[self.position][1] == '.' and
                re.match(r'^\w+$', self.tokens[self.position + 1][1])):
-            # consume '.' and identifier
             parts.append(self.tokens[self.position + 1][1])
             self.position += 2
 
@@ -48,7 +45,6 @@ class SQLSyntaxParser:
                 root["children"].append(current_keyword)
                 self.position += 1
             else:
-                # Try to parse qualified name (identifiers separated by dots)
                 qualified_name = self.parse_qualified_name()
                 if qualified_name:
                     node = {"type": "qualified_name", "value": qualified_name}
@@ -57,7 +53,6 @@ class SQLSyntaxParser:
                     else:
                         root["children"].append(node)
                 else:
-                    # If not qualified name, add single token and advance
                     node = {"type": "token", "value": token_value}
                     if current_keyword:
                         current_keyword["children"].append(node)
@@ -127,10 +122,8 @@ class SQLSyntaxParser:
         return None
 
     def check_for_missing_commas(self):
-        # We need to treat qualified names as one token here
         i = 0
         while i < len(self.tokens):
-            # Try to parse qualified name from current position
             pos = i
             if not re.match(r'^\w+$', self.tokens[pos][1]):
                 i += 1
@@ -143,19 +136,10 @@ class SQLSyntaxParser:
                 parts.append(self.tokens[pos + 1][1])
                 pos += 2
 
-            # parts now hold the qualified name tokens
-            # Check if there's missing commas between consecutive qualified names
             next_start = pos
             if next_start < len(self.tokens):
-                # Look ahead to next qualified name
-                # Find next qualified name start
                 if next_start < len(self.tokens) and re.match(r'^\w+$', self.tokens[next_start][1]):
-                    # Next qualified name exists; check if comma is missing between them
-                    # If there's no comma between end of first qualified name and start of next, error
-                    # Find the token just after first qualified name
                     after_first_end = pos
-                    # If tokens between first qualified name and next are not comma, raise error
-                    # Actually since qualified names are parsed fully, if no comma at pos, error
                     if after_first_end < len(self.tokens):
                         if self.tokens[after_first_end][1] != ',':
                             # Exception for special tokens that can come after qualified names
